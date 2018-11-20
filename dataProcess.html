@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { padding: 20px; }
+    .input_box { height: 200px; display: flex; flex-direction: row; }
+    textarea { height: 200px; width: 500px; resize: none; outline: none; }
+    .button_box { display: flex; flex:1; flex-direction: column; }
+    .button_box div { flex: 1; padding: 20px; }
+    input, button { outline: none; height: 30px; width: 100px; }
+    button { cursor: pointer; }
+    table { text-align: center; border-collapse: collapse; min-width: 500px; }
+    .hidden_box { display: none }
+    .export_box { margin-top: 20px; }
+  </style>
+</head>
+
+<body>
+  <div class="input_box">
+    <textarea name="" id="my_textarea" cols="30" rows="10"></textarea>
+    <div class="button_box">
+      <div class="button_top">
+        <input type="text" id="my_input">
+        <button onclick="changeData()">转换数据</button>
+      </div>
+      <div class="button_middle">
+        <button onclick="copyTable()">复制表格</button>
+        <button onclick="clearData()">清空内容</button>
+      </div>
+      <div class="button_bottom">
+        <input type="file" name="file" id="file_id" />
+        <button onclick="readFile()">读取文件</button>
+      </div>
+    </div>
+  </div>
+  <div class="export_box">
+    <table id="hidden_table" class="hidden_box" border="1"></table>
+    <table id="show_table" border="1"></table>
+  </div>
+</body>
+
+</html>
+
+<script>
+  /**
+   * 转换数据的方法
+   */
+  function changeData() {
+    // 获取用户输入的内容
+    const textareaStr = document.getElementById('my_textarea').value
+    // 按行切割成数组
+    const textareaRow = textareaStr.split(/[\n]/)
+    // 处理每一行的数据，按列切割成数组
+    const textareaCols = textareaRow.map(row => {
+      return row.split(/[\s]/).filter(cols => { return cols !== '' })
+    })
+    // 获取隐藏表格
+    const hiddenTable = document.getElementById('hidden_table')
+    hiddenTable.innerHTML = ''
+    // 动态添加隐藏表格内容
+    for (let i = 0; i < textareaCols.length; i++) {
+      const row = textareaCols[i]
+      const tr = document.createElement('tr')
+      hiddenTable.appendChild(tr)
+      for (let j = 0; j < row.length; j++) {
+        const td = document.createElement('td')
+        tr.appendChild(td)
+        td.innerHTML = row[j]
+      }
+    }
+    // 将1和3数据连接，2和4数据连接
+    const rows = hiddenTable.rows
+    const oddArr = []
+    const evenArr = []
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].cells[0]) oddArr.push(rows[i].cells[0].innerHTML)
+      if (rows[i].cells[1]) evenArr.push(rows[i].cells[1].innerHTML)
+    }
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].cells[2]) oddArr.push(rows[i].cells[2].innerHTML)
+      if (rows[i].cells[3]) evenArr.push(rows[i].cells[3].innerHTML)
+    }
+    // 添加显示表格
+    const showTable = document.getElementById('show_table')
+    showTable.innerHTML = ''
+    // 获取除数
+    const divisor = document.getElementById('my_input').value
+    // 动态添加隐藏表格内容
+    for (let i = 0; i < oddArr.length; i++) {
+      const tr = document.createElement('tr')
+      showTable.appendChild(tr)
+      const td1 = document.createElement('td')
+      tr.appendChild(td1)
+      td1.innerHTML = oddArr[i]
+      const td2 = document.createElement('td')
+      tr.appendChild(td2)
+      td2.innerHTML = evenArr[i]
+      if (divisor) {
+        const td3 = document.createElement('td')
+        tr.appendChild(td3)
+        td3.innerHTML = Math.round(evenArr[i] / divisor * 10000000000000) / 10000000000000
+      }
+    }
+  }
+
+  /**
+   * 读取文件的方法
+   */
+  function readFile() {
+    const objFile = document.getElementById("file_id")
+    if(objFile.value === '') {
+      alert('还没选择文件呢，大傻子！')
+      return
+    }
+    const files = objFile.files
+    // 新建一个FileReader
+    const reader = new FileReader()
+    // 读取文件 
+    reader.readAsText(files[0], "UTF-8")
+    // 读取完文件之后会回来这里
+    reader.onload = function(e){
+      // 读取文件内容
+      const fileString = e.target.result
+      // console.log(fileString)
+      // 找到数据的位置
+      const begin = fileString.indexOf('---------------------               ---------------------')
+      const end = fileString.indexOf('AERSCREEN MAXIMUM IMPACT SUMMARY')
+      // 获取数据
+      const effectiveStr = fileString.slice(begin, end).replace(/-/g, '').replace(/\*/g, '')
+      // 将数据添加到textarea中并转换
+      document.getElementById('my_textarea').value = effectiveStr
+      changeData()
+    }
+  }
+
+  /**
+   * 复制表格的方法
+   */
+   function copyTable() {
+    const table = document.getElementById('show_table')
+    const range = document.createRange()
+    // 设定range包含的节点对象 
+    range.selectNode(table)
+    // 窗口的selection对象，表示用户选择的文本
+    const selection = window.getSelection()
+    // 将已经包含的已选择的对象清除掉
+    if (selection.rangeCount > 0) selection.removeAllRanges()
+    // 将要复制的区域的range对象添加到selection对象中
+    selection.addRange(range)
+    // 执行copy命令，copy用户选择的文本
+    document.execCommand('copy')
+  }
+
+  /**
+   * 清空数据的方法
+   */
+  function clearData () {
+    window.location.reload(true)
+  }
+</script>
