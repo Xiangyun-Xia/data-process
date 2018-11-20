@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Document</title>
+  <title>OUT数据处理</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { padding: 20px; }
@@ -113,11 +113,12 @@
    * 读取文件的方法
    */
   function readFile() {
-    const objFile = document.getElementById("file_id")
+    const objFile = document.getElementById('file_id')
     if(objFile.value === '') {
       alert('还没选择文件呢，大傻子！')
       return
     }
+    // 获取文件
     const files = objFile.files
     // 新建一个FileReader
     const reader = new FileReader()
@@ -127,7 +128,6 @@
     reader.onload = function(e){
       // 读取文件内容
       const fileString = e.target.result
-      // console.log(fileString)
       // 找到数据的位置
       const begin = fileString.indexOf('---------------------               ---------------------')
       const end = fileString.indexOf('AERSCREEN MAXIMUM IMPACT SUMMARY')
