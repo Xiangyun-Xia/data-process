@@ -12,8 +12,9 @@
     .input_box { height: 200px; display: flex; flex-direction: row; }
     textarea { height: 200px; width: 500px; resize: none; outline: none; }
     .button_box { display: flex; flex:1; flex-direction: column; }
-    .button_box div { flex: 1; padding: 20px; }
-    input, button { outline: none; height: 30px; width: 100px; }
+    .button_box .box_item { flex: 1; padding: 10px; display: flex; align-items: center; }
+    .input, button { height: 30px; width: 100px; }
+    input, button, h4, label { outline: none; margin: 0 5px; }
     button { cursor: pointer; }
     table { text-align: center; border-collapse: collapse; min-width: 500px; background-color: #fff; }
     .hidden_box { display: none }
@@ -25,21 +26,27 @@
   <div class="input_box">
     <textarea name="" id="my_textarea" cols="30" rows="10"></textarea>
     <div class="button_box">
-      <div class="button_top">
-        <input type="text" id="my_input">
+      <div class="box_item">
+        <input type="text" id="my_input" class="input">
         <button onclick="changeData()">转换数据</button>
       </div>
-      <div class="button_middle">
+      <div class="box_item">
         <button onclick="copyTable()">复制表格</button>
         <button onclick="clearData()">清空内容</button>
       </div>
-      <div class="button_bottom">
-        <input type="file" name="file" id="file_id" />
+      <div class="box_item">
+        <h4>文件类型：</h4>
+        <label><input name="status" type="radio" value="2" checked="checked" />两列</label> 
+        <label><input name="status" type="radio" value="3" />三列</label> 
+      </div>
+      <div class="box_item">
         <button onclick="readFile()">读取文件</button>
+        <input type="file" name="file" id="file_id" />
       </div>
     </div>
   </div>
   <div class="export_box">
+    <div class="export_div">MAXIMUM 1-HOUR：<span id="export_span"></span></div>
     <table id="hidden_table" class="hidden_box" border="1"></table>
     <table id="show_table" border="1"></table>
   </div>
@@ -74,37 +81,82 @@
         td.innerHTML = row[j]
       }
     }
-    // 将1和3数据连接，2和4数据连接
+    // 拼接数据
     const rows = hiddenTable.rows
-    const oddArr = []
-    const evenArr = []
-    for (let i = 0; i < rows.length; i++) {
-      if (rows[i].cells[0]) oddArr.push(rows[i].cells[0].innerHTML)
-      if (rows[i].cells[1]) evenArr.push(rows[i].cells[1].innerHTML)
-    }
-    for (let i = 0; i < rows.length; i++) {
-      if (rows[i].cells[2]) oddArr.push(rows[i].cells[2].innerHTML)
-      if (rows[i].cells[3]) evenArr.push(rows[i].cells[3].innerHTML)
-    }
-    // 添加显示表格
-    const showTable = document.getElementById('show_table')
-    showTable.innerHTML = ''
-    // 获取除数
-    const divisor = document.getElementById('my_input').value
-    // 动态添加隐藏表格内容
-    for (let i = 0; i < oddArr.length; i++) {
-      const tr = document.createElement('tr')
-      showTable.appendChild(tr)
-      const td1 = document.createElement('td')
-      tr.appendChild(td1)
-      td1.innerHTML = oddArr[i]
-      const td2 = document.createElement('td')
-      tr.appendChild(td2)
-      td2.innerHTML = evenArr[i]
-      if (divisor) {
+    // 判断数据是两列还是三列
+    const statusArr = document.getElementsByName('status')
+    const status = statusArr[0].checked ? 2 : 3
+    if (status === 2) {
+      // 将1和3数据连接，2和4数据连接
+      const oddArr = []
+      const evenArr = []
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].cells[0]) oddArr.push(rows[i].cells[0].innerHTML)
+        if (rows[i].cells[1]) evenArr.push(rows[i].cells[1].innerHTML)
+      }
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].cells[2]) oddArr.push(rows[i].cells[2].innerHTML)
+        if (rows[i].cells[3]) evenArr.push(rows[i].cells[3].innerHTML)
+      }
+      // 添加显示表格
+      const showTable = document.getElementById('show_table')
+      showTable.innerHTML = ''
+      // 获取除数
+      const divisor = document.getElementById('my_input').value
+      // 动态添加隐藏表格内容
+      for (let i = 0; i < oddArr.length; i++) {
+        const tr = document.createElement('tr')
+        showTable.appendChild(tr)
+        const td1 = document.createElement('td')
+        tr.appendChild(td1)
+        td1.innerHTML = oddArr[i]
+        const td2 = document.createElement('td')
+        tr.appendChild(td2)
+        td2.innerHTML = evenArr[i]
+        if (divisor) {
+          const td3 = document.createElement('td')
+          tr.appendChild(td3)
+          td3.innerHTML = Math.round(evenArr[i] / divisor * 10000000000000) / 10000000000000
+        }
+      }
+    } else if (status === 3) {
+      // 将1和3数据连接，2和4数据连接
+      const oneArr = []
+      const twoArr = []
+      const threeArr = []
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].cells[0]) oneArr.push(rows[i].cells[0].innerHTML)
+        if (rows[i].cells[1]) twoArr.push(rows[i].cells[1].innerHTML)
+        if (rows[i].cells[2]) threeArr.push(rows[i].cells[2].innerHTML)
+      }
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].cells[3]) oneArr.push(rows[i].cells[3].innerHTML)
+        if (rows[i].cells[4]) twoArr.push(rows[i].cells[4].innerHTML)
+        if (rows[i].cells[5]) threeArr.push(rows[i].cells[5].innerHTML)
+      }
+      // 添加显示表格
+      const showTable = document.getElementById('show_table')
+      showTable.innerHTML = ''
+      // 获取除数
+      const divisor = document.getElementById('my_input').value
+      // 动态添加隐藏表格内容
+      for (let i = 0; i < oneArr.length; i++) {
+        const tr = document.createElement('tr')
+        showTable.appendChild(tr)
+        const td1 = document.createElement('td')
+        tr.appendChild(td1)
+        td1.innerHTML = oneArr[i]
+        const td2 = document.createElement('td')
+        tr.appendChild(td2)
+        td2.innerHTML = twoArr[i]
         const td3 = document.createElement('td')
         tr.appendChild(td3)
-        td3.innerHTML = Math.round(evenArr[i] / divisor * 10000000000000) / 10000000000000
+        td3.innerHTML = threeArr[i]
+        if (divisor) {
+          const td4 = document.createElement('td')
+          tr.appendChild(td4)
+          td4.innerHTML = Math.round(twoArr[i] / divisor * 10000000000000) / 10000000000000
+        }
       }
     }
   }
@@ -123,13 +175,21 @@
     // 新建一个FileReader
     const reader = new FileReader()
     // 读取文件 
-    reader.readAsText(files[0], "UTF-8")
+    reader.readAsText(files[0], 'UTF-8')
     // 读取完文件之后会回来这里
     reader.onload = function(e){
       // 读取文件内容
       const fileString = e.target.result
+      // 获取 MAXIMUM 1-HOUR 的值
+      const a = fileString.indexOf('----------  ----------  ----------  ----------  ----------')
+      const b = fileString.indexOf('DISTANCE FROM SOURCE')
+      const MAXIMUM = fileString.slice(a, b).replace(/-/g, '').split(/[\s]/).filter(item => { return item !== '' })
+      const span = document.getElementById('export_span')
+      span.innerHTML = MAXIMUM[2]
       // 找到数据的位置
-      const begin = fileString.indexOf('---------------------               ---------------------')
+      const statusArr = document.getElementsByName('status')
+      const begin = statusArr[0].checked ? fileString.indexOf('---------------------               ---------------------') 
+      : fileString.indexOf('----------------------------          -----------------------------')
       const end = fileString.indexOf('AERSCREEN MAXIMUM IMPACT SUMMARY')
       // 获取数据
       const effectiveStr = fileString.slice(begin, end).replace(/-/g, '').replace(/\*/g, '')
