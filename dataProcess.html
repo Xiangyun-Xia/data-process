@@ -192,7 +192,7 @@
       : fileString.indexOf('----------------------------          -----------------------------')
       const end = fileString.indexOf('AERSCREEN MAXIMUM IMPACT SUMMARY')
       // 获取数据
-      const effectiveStr = fileString.slice(begin, end).replace(/-/g, '').replace(/\*/g, '')
+      const effectiveStr = fileString.slice(begin, end).replace(/-0/g, '&').replace(/\*/g, '').replace(/-/g, '').replace(/&/g, '-0')
       // 将数据添加到textarea中并转换
       document.getElementById('my_textarea').value = effectiveStr
       changeData()
