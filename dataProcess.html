@@ -8,9 +8,9 @@
   <title>OUT数据处理</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html,body { height: 100%; width: 100%; background: #fff; font-size: 14px; font-family: 'Microsoft Yahei'; }
+    html,body { height: 100%; width: 100%; background: #fff; font-size: 14px; font-family: 'Microsoft Yahei'; background-color: #f1f4f7; }
     input, button, label { outline: none; position: relative; }
-    .container { width: 1366px; background-color: #f1f4f7; margin: 0 auto; padding: 20px; }
+    .container { width: 1366px; margin: 0 auto; padding: 20px; }
     .my-input { height: 27px; width: 50px; margin-right: 10px; }
     .my-button { margin-right: 5px; padding: 5px 10px; background: #00b0f0; color: #FFF; border: none; border-radius: 5px; cursor: pointer; }
     .my-button:hover { opacity: 0.9; }
@@ -24,7 +24,7 @@
     .container_export_result, .container_export_preview { flex: 1; background-color: #f3f4f5; }
     h3 { text-align: center; margin-bottom: 20px; }
     textarea { height: 500px; width: 100%; resize: none; outline: none; padding: 10px; }
-    table { text-align: center; border-collapse: collapse; min-width: 660px; background-color: #fff; margin-top: 10px; }
+    table { text-align: center; border-collapse: collapse; min-width: 650px; background-color: #fff; margin-top: 10px; }
     .hidden_box { display: none }
   </style>
 </head>
@@ -39,12 +39,15 @@
         <input type="file" id="file_select" onchange="fileChange()">
       </label>
       <div class="file-type">
-        <h4>文件列数：</h4>
+        <h4>数据列数：</h4>
         <label class="type-label"><input name="column" type="radio" value="2" />两列</label> 
         <label><input name="column" type="radio" value="3" checked="checked" />三列</label>
-        <h4 style="margin-left: 20px">文件语言：</h4>
+        <h4 style="margin-left: 40px">数据语言：</h4>
         <label class="type-label"><input name="language" type="radio" value="chinese" />中文</label> 
-        <label><input name="language" type="radio" value="english" checked="checked" />英文</label> 
+        <label><input name="language" type="radio" value="english" checked="checked" />英文</label>
+        <h4 style="margin-left: 40px">显示高程：</h4>
+        <label class="type-label"><input name="high" type="radio" value="yes" />是</label> 
+        <label><input name="high" type="radio" value="no" checked="checked" />否</label> 
       </div>
       <div class="file-handle">
         <h4>除以</h4>
@@ -52,7 +55,8 @@
         <button class="my-button" onclick="readFile()">读取文件</button>
         <button class="my-button" onclick="changeData()">转换数据</button>
 
-        <button style="margin-left: 30px" class="my-button" onclick="copyTable()">复制表格</button>
+        <button style="margin-left: 60px" class="my-button" onclick="copyTable('show_table')">复制结果表格</button>
+        <button class="my-button" onclick="copyTable('filter_table')">复制筛选表格</button>
         <button class="my-button" onclick="clearData()">清空内容</button>
       </div>
     </div>
@@ -61,12 +65,16 @@
       <div class="container_export_preview" style="padding-right: 20px">
         <h3>====== 数据输入/原数据预览 ======</h3>
         <textarea name="" id="my_textarea" cols="30" rows="10"></textarea>
+        <h3 id="filter_h3" style="margin-top:20px; display: none">====== 结果筛选 ======</h3>
+        <table id="filter_table" border="1"></table>
       </div>
-      <div class="container_export_result">
-        <h3>====== 结果输出 ======</h3>
+      <div class="container_export_result" id="export_result" style="display: none">
+        <h3 id="result_h3">====== 结果输出 ======</h3>
         <div class="max-data">
-          <h4>MAXIMUM 1-HOUR(处理后)：</h4>
+          <h4>MAXIMUM 1-HOUR：</h4>
           <span id="export_span">暂无数据</span>
+          <h4 style="margin-left: 50px">MAXIMUM 1-HOUR(处理后)：</h4>
+          <span id="export_span_process">暂无数据</span>
         </div>
         <table id="hidden_table" class="hidden_box" border="1"></table>
         <table id="show_table" border="1"></table>
@@ -185,6 +193,9 @@
       showTable.innerHTML = ''
       // 获取除数
       const divisor = document.getElementById('my_input').value
+      // 获取是否显示高程
+      const highArr = document.getElementsByName('high')
+      const highFlag = highArr[0].checked ? true : false
       //添加表头
       const tr = document.createElement('tr')
       showTable.appendChild(tr)
@@ -194,9 +205,11 @@
       const th2 = document.createElement('th')
       tr.appendChild(th2)
       th2.innerHTML = 'MAXIMUM 1-HR CONC(ug/m3)'
-      const th3 = document.createElement('th')
-      tr.appendChild(th3)
-      th3.innerHTML = 'RECEPTOR HEIGHT(m)'
+      if (highFlag) {
+        const th3 = document.createElement('th')
+        tr.appendChild(th3)
+        th3.innerHTML = 'RECEPTOR HEIGHT(m)'
+      }
       if (divisor) {
         const th4 = document.createElement('th')
         tr.appendChild(th4)
@@ -212,9 +225,11 @@
         const td2 = document.createElement('td')
         tr.appendChild(td2)
         td2.innerHTML = twoArr[i]
-        const td3 = document.createElement('td')
-        tr.appendChild(td3)
-        td3.innerHTML = threeArr[i]
+        if (highFlag) {
+          const td3 = document.createElement('td')
+          tr.appendChild(td3)
+          td3.innerHTML = threeArr[i]
+        }
         if (divisor) {
           const td4 = document.createElement('td')
           tr.appendChild(td4)
@@ -222,6 +237,36 @@
         }
       }
     }
+
+    dataFilter()
+  }
+
+  /**
+   * 筛选数据的方法
+   */
+  function dataFilter() {
+    const usefulData = [0, 50, 75, 150, 200, 325, 450, 500, 650, 750, 1000, 1200, 1500, 2000, 3000, 4000, 5000]
+    // 获取结果的表格
+    const showTable = document.getElementById('show_table')
+    const filterTable = document.getElementById('filter_table')
+    filterTable.innerHTML = ''
+    const showTableRows = showTable.rows
+    for (let index = 0; index < showTableRows.length; index++) {
+      const rows = showTableRows[index]
+      const cells = rows.cells
+      for (let i = 0; i < usefulData.length; i++) {
+        const num = usefulData[i]
+        if (index === 0 || num == cells[0].innerHTML) {
+          const node = rows.cloneNode(true)
+          filterTable.appendChild(node)
+          break
+        }
+      }
+    }
+    // 显示最大值和筛选表头
+    document.getElementById('export_result').style.display = "block"
+    document.getElementById('filter_h3').style.display = "block"
+    
   }
 
   /**
@@ -267,9 +312,12 @@
         return
       }
       // 填充 MAXIMUM 1-HOUR 的值
-      const span = document.getElementById('export_span')
+      const span1 = document.getElementById('export_span')
+      const span2 = document.getElementById('export_span_process')
       const divisor = document.getElementById('my_input').value || 1
-      span.innerHTML = languageFlag ? (Math.round(MAXIMUM[1] / divisor * 10000000000000) / 10000000000000) : (Math.round(MAXIMUM[2] / divisor * 10000000000000) / 10000000000000)
+      console.log(divisor, 'divisor')
+      span1.innerHTML = languageFlag ? MAXIMUM[1] : MAXIMUM[2]
+      span2.innerHTML = languageFlag ? (Math.round(MAXIMUM[1] / divisor * 10000000000000) / 10000000000000) : (Math.round(MAXIMUM[2] / divisor * 10000000000000) / 10000000000000)
       // 获取数据
       const effectiveStr = fileString.slice(begin, end).replace(/-0/g, '&').replace(/\*/g, '').replace(/-/g, '').replace(/&/g, '-0')
       // 将数据添加到textarea中并转换
@@ -281,8 +329,9 @@
   /**
    * 复制表格的方法
    */
-   function copyTable() {
-    const table = document.getElementById('show_table')
+   function copyTable(tableName) {
+    console.log(tableName, 'tableName')
+    const table = document.getElementById(tableName)
     const range = document.createRange()
     // 设定range包含的节点对象 
     range.selectNode(table)
