@@ -8,53 +8,85 @@
   <title>OUT数据处理</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { padding: 20px; background: #F1F4F7; }
-    .input_box { height: 200px; display: flex; flex-direction: row; }
-    textarea { height: 200px; width: 500px; resize: none; outline: none; }
-    .button_box { display: flex; flex:1; flex-direction: column; }
-    .button_box .box_item { flex: 1; padding: 10px; display: flex; align-items: center; }
-    .input, button { height: 30px; width: 100px; }
-    input, button, h4, label { outline: none; margin: 0 5px; }
-    button { cursor: pointer; }
-    table { text-align: center; border-collapse: collapse; min-width: 500px; background-color: #fff; }
+    html,body { height: 100%; width: 100%; background: #fff; font-size: 14px; font-family: 'Microsoft Yahei'; }
+    input, button, label { outline: none; position: relative; }
+    .container { width: 1366px; background-color: #f1f4f7; margin: 0 auto; padding: 20px; }
+    .my-input { height: 27px; width: 50px; margin-right: 10px; }
+    .my-button { margin-right: 5px; padding: 5px 10px; background: #00b0f0; color: #FFF; border: none; border-radius: 5px; cursor: pointer; }
+    .my-button:hover { opacity: 0.9; }
+    #file_select { position: absolute; left: 0; top: 0; opacity: 0; font-size: 20px; }
+    #file_text{ color: red; }
+    .file-type, .file-handle, .max-data { display: flex; align-items: center; margin-top: 10px; }
+    h4 { margin: 0 5px; }
+    .type-label { margin-right: 10px; }
+    input[type="radio"] { margin-right: 3px; }
+    .container_export { display: flex; margin-top: 20px; }
+    .container_export_result, .container_export_preview { flex: 1; background-color: #f3f4f5; }
+    h3 { text-align: center; margin-bottom: 20px; }
+    textarea { height: 500px; width: 100%; resize: none; outline: none; padding: 10px; }
+    table { text-align: center; border-collapse: collapse; min-width: 660px; background-color: #fff; margin-top: 10px; }
     .hidden_box { display: none }
-    .export_box { margin-top: 20px; }
   </style>
 </head>
 
 <body>
-  <div class="input_box">
-    <textarea name="" id="my_textarea" cols="30" rows="10"></textarea>
-    <div class="button_box">
-      <div class="box_item">
-        <input type="text" id="my_input" class="input">
-        <button onclick="changeData()">转换数据</button>
+  <div class="container">
+    <!-- 输入区 -->
+    <div class="container_input">
+      <label for="file_select" class="file-select">
+        <input class="my-button" type="button" id="file_input" value="选择文件">
+        <span id="file_text">未选择任何文件</span>
+        <input type="file" id="file_select" onchange="fileChange()">
+      </label>
+      <div class="file-type">
+        <h4>文件列数：</h4>
+        <label class="type-label"><input name="column" type="radio" value="2" />两列</label> 
+        <label><input name="column" type="radio" value="3" checked="checked" />三列</label>
+        <h4 style="margin-left: 20px">文件语言：</h4>
+        <label class="type-label"><input name="language" type="radio" value="chinese" />中文</label> 
+        <label><input name="language" type="radio" value="english" checked="checked" />英文</label> 
       </div>
-      <div class="box_item">
-        <button onclick="copyTable()">复制表格</button>
-        <button onclick="clearData()">清空内容</button>
-      </div>
-      <div class="box_item">
-        <h4>文件类型：</h4>
-        <label><input name="status" type="radio" value="2" checked="checked" />两列</label> 
-        <label><input name="status" type="radio" value="3" />三列</label> 
-      </div>
-      <div class="box_item">
-        <button onclick="readFile()">读取文件</button>
-        <input type="file" name="file" id="file_id" />
+      <div class="file-handle">
+        <h4>除以</h4>
+        <input type="text" id="my_input" class="my-input">
+        <button class="my-button" onclick="readFile()">读取文件</button>
+        <button class="my-button" onclick="changeData()">转换数据</button>
+
+        <button style="margin-left: 30px" class="my-button" onclick="copyTable()">复制表格</button>
+        <button class="my-button" onclick="clearData()">清空内容</button>
       </div>
     </div>
-  </div>
-  <div class="export_box">
-    <div class="export_div">MAXIMUM 1-HOUR：<span id="export_span"></span></div>
-    <table id="hidden_table" class="hidden_box" border="1"></table>
-    <table id="show_table" border="1"></table>
+    <!-- 输出区 -->
+    <div class="container_export">
+      <div class="container_export_preview" style="padding-right: 20px">
+        <h3>====== 数据输入/原数据预览 ======</h3>
+        <textarea name="" id="my_textarea" cols="30" rows="10"></textarea>
+      </div>
+      <div class="container_export_result">
+        <h3>====== 结果输出 ======</h3>
+        <div class="max-data">
+          <h4>MAXIMUM 1-HOUR(处理后)：</h4>
+          <span id="export_span">暂无数据</span>
+        </div>
+        <table id="hidden_table" class="hidden_box" border="1"></table>
+        <table id="show_table" border="1"></table>
+      </div>
+    </div>
   </div>
 </body>
 
 </html>
 
 <script>
+  /**
+   * 监听选择文件的改变
+   */
+  function fileChange() {
+    const path = document.getElementById('file_select').value
+    const name = path.split('\\')
+    document.getElementById('file_text').innerHTML = name[name.length-1]
+  }
+
   /**
    * 转换数据的方法
    */
@@ -84,7 +116,7 @@
     // 拼接数据
     const rows = hiddenTable.rows
     // 判断数据是两列还是三列
-    const statusArr = document.getElementsByName('status')
+    const statusArr = document.getElementsByName('column')
     const status = statusArr[0].checked ? 2 : 3
     if (status === 2) {
       // 将1和3数据连接，2和4数据连接
@@ -103,6 +135,20 @@
       showTable.innerHTML = ''
       // 获取除数
       const divisor = document.getElementById('my_input').value
+      //添加表头
+      const tr = document.createElement('tr')
+      showTable.appendChild(tr)
+      const th1 = document.createElement('th')
+      tr.appendChild(th1)
+      th1.innerHTML = 'DIST(m)'
+      const th2 = document.createElement('th')
+      tr.appendChild(th2)
+      th2.innerHTML = 'MAXIMUM 1-HR CONC(ug/m3)'
+      if (divisor) {
+        const th3 = document.createElement('th')
+        tr.appendChild(th3)
+        th3.innerHTML = 'RATE(%)'
+      }
       // 动态添加隐藏表格内容
       for (let i = 0; i < oddArr.length; i++) {
         const tr = document.createElement('tr')
@@ -120,7 +166,7 @@
         }
       }
     } else if (status === 3) {
-      // 将1和3数据连接，2和4数据连接
+      // 将1和4数据连接，2和5数据连接，3和6数据连接
       const oneArr = []
       const twoArr = []
       const threeArr = []
@@ -139,6 +185,23 @@
       showTable.innerHTML = ''
       // 获取除数
       const divisor = document.getElementById('my_input').value
+      //添加表头
+      const tr = document.createElement('tr')
+      showTable.appendChild(tr)
+      const th1 = document.createElement('th')
+      tr.appendChild(th1)
+      th1.innerHTML = 'DIST(m)'
+      const th2 = document.createElement('th')
+      tr.appendChild(th2)
+      th2.innerHTML = 'MAXIMUM 1-HR CONC(ug/m3)'
+      const th3 = document.createElement('th')
+      tr.appendChild(th3)
+      th3.innerHTML = 'RECEPTOR HEIGHT(m)'
+      if (divisor) {
+        const th4 = document.createElement('th')
+        tr.appendChild(th4)
+        th4.innerHTML = 'RATE(%)'
+      }
       // 动态添加隐藏表格内容
       for (let i = 0; i < oneArr.length; i++) {
         const tr = document.createElement('tr')
@@ -165,32 +228,48 @@
    * 读取文件的方法
    */
   function readFile() {
-    const objFile = document.getElementById('file_id')
+    const objFile = document.getElementById('file_select')
     if(objFile.value === '') {
-      alert('还没选择文件呢，大傻子！')
+      alert('请选择文件！')
       return
     }
     // 获取文件
     const files = objFile.files
     // 新建一个FileReader
     const reader = new FileReader()
-    // 读取文件 
-    reader.readAsText(files[0], 'UTF-8')
+    // 判断文件是中文还是英文
+    const languageArr = document.getElementsByName('language')
+    const language = languageArr[0].checked ? 'chinese' : 'english'
+    const languageFlag = language === 'chinese' ? true : false
+    // 读取文件
+    if (languageFlag) {
+      console.log('中文')
+      reader.readAsText(files[0], 'GB2312')
+    } else {
+      console.log('英文')
+      reader.readAsText(files[0], 'UTF-8')
+    }
     // 读取完文件之后会回来这里
     reader.onload = function(e){
       // 读取文件内容
       const fileString = e.target.result
       // 获取 MAXIMUM 1-HOUR 的值
       const a = fileString.indexOf('----------  ----------  ----------  ----------  ----------')
-      const b = fileString.indexOf('DISTANCE FROM SOURCE')
+      const b = languageFlag ? fileString.indexOf('最大浓度点离源的距离') : fileString.indexOf('DISTANCE FROM SOURCE')
       const MAXIMUM = fileString.slice(a, b).replace(/-/g, '').split(/[\s]/).filter(item => { return item !== '' })
-      const span = document.getElementById('export_span')
-      span.innerHTML = MAXIMUM[2]
       // 找到数据的位置
-      const statusArr = document.getElementsByName('status')
+      const statusArr = document.getElementsByName('column')
       const begin = statusArr[0].checked ? fileString.indexOf('---------------------               ---------------------') 
       : fileString.indexOf('----------------------------          -----------------------------')
-      const end = fileString.indexOf('AERSCREEN MAXIMUM IMPACT SUMMARY')
+      const end = languageFlag ? fileString.indexOf('AERSCREEN 最大浓度计算结果 小 结') : fileString.indexOf('AERSCREEN MAXIMUM IMPACT SUMMARY')
+      if (end === -1) {
+        alert('请确认文件语言是否正确！')
+        return
+      }
+      // 填充 MAXIMUM 1-HOUR 的值
+      const span = document.getElementById('export_span')
+      const divisor = document.getElementById('my_input').value || 1
+      span.innerHTML = languageFlag ? (Math.round(MAXIMUM[1] / divisor * 10000000000000) / 10000000000000) : (Math.round(MAXIMUM[2] / divisor * 10000000000000) / 10000000000000)
       // 获取数据
       const effectiveStr = fileString.slice(begin, end).replace(/-0/g, '&').replace(/\*/g, '').replace(/-/g, '').replace(/&/g, '-0')
       // 将数据添加到textarea中并转换
