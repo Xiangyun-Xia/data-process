@@ -244,12 +244,10 @@
           const value = Math.round(dataTwo[index] / this._divisor * this._magicNum) / this._magicNum
           this.append('td', tr, value)
         }
-        console.log(this._column, 666)
         if (this._column === 3) {
           if (this._highFlag) {
             this.append('td', tr, dataThree[index])
           }
-          console.log(this._divisor, 678)
           if (this._divisor) {
             const value = Math.round(dataTwo[index] / this._divisor * this._magicNum) / this._magicNum
             this.append('td', tr, value)
