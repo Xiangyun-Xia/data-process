@@ -34,20 +34,20 @@
     <!-- 输入区 -->
     <div class="container_input">
       <label for="file_select" class="file-select">
-        <input class="my-button" type="button" id="file_input" value="选择文件">
+        <input class="my-button" type="button" value="选择文件">
         <span id="file_text">未选择任何文件</span>
         <input type="file" id="file_select" onchange="fileChange()">
       </label>
       <div class="file-type">
         <h4>数据列数：</h4>
-        <label class="type-label"><input name="column" type="radio" value="2" />两列</label> 
+        <label class="type-label"><input name="column" type="radio" value="2" />两列</label>
         <label><input name="column" type="radio" value="3" checked="checked" />三列</label>
         <h4 style="margin-left: 40px">数据语言：</h4>
-        <label class="type-label"><input name="language" type="radio" value="chinese" />中文</label> 
+        <label class="type-label"><input name="language" type="radio" value="chinese" />中文</label>
         <label><input name="language" type="radio" value="english" checked="checked" />英文</label>
         <h4 style="margin-left: 40px">显示高程：</h4>
-        <label class="type-label"><input name="high" type="radio" value="yes" />是</label> 
-        <label><input name="high" type="radio" value="no" checked="checked" />否</label> 
+        <label class="type-label"><input name="high" type="radio" value="yes" />是</label>
+        <label><input name="high" type="radio" value="no" checked="checked" />否</label>
       </div>
       <div class="file-handle">
         <h4>除以</h4>
@@ -86,158 +86,268 @@
 </html>
 
 <script>
+  // 文件类
+  class File {
+    constructor(fileID, nameID, language = 'english', column = 2) {
+      this._fileNode = document.getElementById(fileID)
+      this._nameNode = document.getElementById(nameID)
+      this._language = language
+      this._column = column
+      this._MAXIMUM = []
+      this._effectiveStr = ''
+    }
+    get path() {
+      return this._fileNode.value
+    }
+    get name() {
+      const _name = this.path.split('\\')
+      return _name[_name.length - 1]
+    }
+    get MAXIMUM() {
+      return this._MAXIMUM
+    }
+    get effectiveStr() {
+      return this._effectiveStr
+    }
+    setName() {
+      this._nameNode.innerHTML = this.name
+    }
+    read() {
+      // 获取文件
+      const files = this._fileNode.files
+      // 新建一个FileReader
+      const readers = new FileReader()
+      // 设置读取语言
+      if (this._language === 'chinese') {
+        readers.readAsText(files[0], 'GB2312')
+      }
+      if (this._language === 'english') {
+        readers.readAsText(files[0], 'UTF-8')
+      }
+      // 读取完文件之后会回来这里
+      readers.onload = (e) => {
+        // 读取文件内容
+        const fileString = e.target.result
+        // 获取 MAXIMUM 1-HOUR 的值
+        const a = fileString.indexOf('----------  ----------  ----------  ----------  ----------')
+        const b = this._language === 'chinese' ? fileString.indexOf('最大浓度点离源的距离') : fileString.indexOf('DISTANCE FROM SOURCE')
+        const MAXIMUM = fileString.slice(a, b).replace(/-/g, '').split(/[\s]/).filter(item => {
+          return item !== ''
+        })
+        this._MAXIMUM = MAXIMUM
+        // 找到数据的位置
+        const begin = this._column === 2 ? fileString.indexOf('---------------------               ---------------------') :
+          fileString.indexOf('----------------------------          -----------------------------')
+        if (begin === -1) {
+          return alert('请确认文件列数是否正确！')
+        }
+        const end = this._language === 'chinese' ? fileString.indexOf('AERSCREEN 最大浓度计算结果 小 结') : fileString.indexOf('AERSCREEN MAXIMUM IMPACT SUMMARY')
+        if (end === -1) {
+          return alert('请确认文件语言是否正确！')
+        }
+        // 获取所需数据的字符串
+        const effectiveStr = fileString.slice(begin, end).replace(/-0/g, '&').replace(/\*/g, '').replace(/-/g, '').replace(/&/g, '-0')
+        this._effectiveStr = effectiveStr
+      }
+    }
+  }
+
+  // 数据类
+  class Data {
+    constructor(nodeID, language = 'english', column = 2, divisor = 1) {
+      this._dataNode = document.getElementById(nodeID)
+      this._language = language
+      this._column = column
+      this._divisor = divisor
+
+      this.firstArr = []
+      this.secondArr = []
+      this.thirdArr = []
+    }
+    get data() {
+      const dataStr = this._dataNode.value
+      // 按行切割成数组
+      const dataRow = dataStr.split(/[\n]/)
+      // 处理每一行的数据，按列切割成数组
+      const dataCols = dataRow.map(row => {
+        return row.split(/[\s]/).filter(cols => {
+          return cols !== ''
+        })
+      })
+      return dataCols
+    }
+    get rows() {
+      return this._dataNode.rows
+    }
+    conversion(rows) {
+      const firstArr = []
+      const secondArr = []
+      const thirdArr = []
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].cells[0]) firstArr.push(rows[i].cells[0].innerHTML)
+        if (rows[i].cells[1]) secondArr.push(rows[i].cells[1].innerHTML)
+        if (this._column === 3) {
+          if (rows[i].cells[2]) thirdArr.push(rows[i].cells[2].innerHTML)
+        }
+      }
+      for (let i = 0; i < rows.length; i++) {
+        if (this._column === 2) {
+          if (rows[i].cells[2]) firstArr.push(rows[i].cells[2].innerHTML)
+          if (rows[i].cells[3]) secondArr.push(rows[i].cells[3].innerHTML)
+        }
+        if (this._column === 3) {
+          if (rows[i].cells[3]) firstArr.push(rows[i].cells[3].innerHTML)
+          if (rows[i].cells[4]) secondArr.push(rows[i].cells[4].innerHTML)
+          if (rows[i].cells[5]) thirdArr.push(rows[i].cells[5].innerHTML)
+        }
+      }
+      Object.assign(this, { firstArr, secondArr, thirdArr })
+    }
+  }
+
+  // 表格类
+  class Table {
+    constructor(tableID, tableData, column = 2, divisor, highFlag) {
+      this._tableNode = document.getElementById(tableID)
+      this._tableData = tableData
+      this._column = column
+      this._divisor = divisor
+      this._highFlag = highFlag
+      this._usefulData = [0, 50, 75, 150, 200, 325, 450, 500, 650, 750, 1000, 1200, 1500, 2000, 3000, 4000, 5000]
+
+      this._magicNum = 10000000000000
+    }
+    get rows() {
+      return this._tableNode.rows
+    }
+    append(name, parent, value) {
+      const node = document.createElement(name)
+      parent.appendChild(node)
+      if (value) node.innerHTML = value
+      return node
+    }
+    create() {
+      this._tableNode.innerHTML = ''
+      this._tableData.map((item) => {
+        const tr = this.append('tr', this._tableNode)
+        item.map((tdValue) => {
+          this.append('td', tr, tdValue)
+        })
+      })
+    }
+    specificCreate(dataOne, dataTwo, dataThree) {
+      dataOne.map((data, index) => {
+        const tr = this.append('tr', this._tableNode)
+        this.append('td', tr, dataOne[index])
+        this.append('td', tr, dataTwo[index])
+        if (this._column === 2 && this._divisor) {
+          const value = Math.round(dataTwo[index] / this._divisor * this._magicNum) / this._magicNum
+          this.append('td', tr, value)
+        }
+        console.log(this._column, 666)
+        if (this._column === 3) {
+          if (this._highFlag) {
+            this.append('td', tr, dataThree[index])
+          }
+          console.log(this._divisor, 678)
+          if (this._divisor) {
+            const value = Math.round(dataTwo[index] / this._divisor * this._magicNum) / this._magicNum
+            this.append('td', tr, value)
+          }
+        }
+      })
+    }
+    addTh() {
+      this._tableNode.innerHTML = ''
+      const tr = this.append('tr', this._tableNode)
+      this.append('th', tr, 'DIST(m)')
+      this.append('th', tr, 'MAXIMUM 1-HR CONC(ug/m3)')
+      if (this._column === 2 && this._divisor) {
+        this.append('th', tr, 'RATE(%)')
+      }
+      if (this._column === 3) {
+        if (this._highFlag) {
+          this.append('th', tr, 'RECEPTOR HEIGHT(m)')
+        }
+        if (this._divisor) {
+          this.append('th', tr, 'RATE(%)')
+        }
+      }
+    }
+    filter(dataTable) {
+      this._tableNode.innerHTML = ''
+      for (let index = 0; index < dataTable.rows.length; index++) {
+        const row = dataTable.rows[index]
+        const cells = row.cells
+        for (let i = 0; i < this._usefulData.length; i++) {
+          const num = this._usefulData[i]
+          if (index === 0 || num == cells[0].innerHTML) {
+            const node = row.cloneNode(true)
+            this._tableNode.appendChild(node)
+            break
+          }
+        }
+      }
+    }
+    copy() {
+      const range = document.createRange()
+      // 设定range包含的节点对象
+      range.selectNode(this._tableNode)
+      // 窗口的selection对象，表示用户选择的文本
+      const selection = window.getSelection()
+      // 将已经包含的已选择的对象清除掉
+      if (selection.rangeCount > 0) selection.removeAllRanges()
+      // 将要复制的区域的range对象添加到selection对象中
+      selection.addRange(range)
+      // 执行copy命令，copy用户选择的文本
+      document.execCommand('copy')
+    }
+  }
+
+  /**
+   * 监听选择文件的改变
+   */
+  function getParams() {
+    // 获取语言
+    const languageArr = document.getElementsByName('language')
+    const language = languageArr[0].checked ? 'chinese' : 'english'
+    // 获取列数
+    const columnArr = document.getElementsByName('column')
+    const column = columnArr[0].checked ? 2 : 3
+    // 获取除数
+    const divisor = document.getElementById('my_input').value
+    // 获取是否显示高程
+    const highArr = document.getElementsByName('high')
+    const highFlag = highArr[0].checked ? true : false
+    return { language, column, divisor, highFlag }
+  }
+
   /**
    * 监听选择文件的改变
    */
   function fileChange() {
-    const path = document.getElementById('file_select').value
-    const name = path.split('\\')
-    document.getElementById('file_text').innerHTML = name[name.length-1]
+    const file = new File('file_select', 'file_text')
+    file.setName()
   }
 
   /**
    * 转换数据的方法
    */
   function changeData() {
-    // 获取用户输入的内容
-    const textareaStr = document.getElementById('my_textarea').value
-    // 按行切割成数组
-    const textareaRow = textareaStr.split(/[\n]/)
-    // 处理每一行的数据，按列切割成数组
-    const textareaCols = textareaRow.map(row => {
-      return row.split(/[\s]/).filter(cols => { return cols !== '' })
-    })
-    // 获取隐藏表格
-    const hiddenTable = document.getElementById('hidden_table')
-    hiddenTable.innerHTML = ''
-    // 动态添加隐藏表格内容
-    for (let i = 0; i < textareaCols.length; i++) {
-      const row = textareaCols[i]
-      const tr = document.createElement('tr')
-      hiddenTable.appendChild(tr)
-      for (let j = 0; j < row.length; j++) {
-        const td = document.createElement('td')
-        tr.appendChild(td)
-        td.innerHTML = row[j]
-      }
-    }
-    // 拼接数据
+    const { language, column, divisor, highFlag } = getParams()
+    // 创建数据对象和表格对象
+    const dataObj = new Data('my_textarea', language, column, divisor)
+    const hiddenTable = new Table('hidden_table', dataObj.data, column, divisor, highFlag)
+    hiddenTable.create()
+    // 转换数据
     const rows = hiddenTable.rows
-    // 判断数据是两列还是三列
-    const statusArr = document.getElementsByName('column')
-    const status = statusArr[0].checked ? 2 : 3
-    if (status === 2) {
-      // 将1和3数据连接，2和4数据连接
-      const oddArr = []
-      const evenArr = []
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i].cells[0]) oddArr.push(rows[i].cells[0].innerHTML)
-        if (rows[i].cells[1]) evenArr.push(rows[i].cells[1].innerHTML)
-      }
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i].cells[2]) oddArr.push(rows[i].cells[2].innerHTML)
-        if (rows[i].cells[3]) evenArr.push(rows[i].cells[3].innerHTML)
-      }
-      // 添加显示表格
-      const showTable = document.getElementById('show_table')
-      showTable.innerHTML = ''
-      // 获取除数
-      const divisor = document.getElementById('my_input').value
-      //添加表头
-      const tr = document.createElement('tr')
-      showTable.appendChild(tr)
-      const th1 = document.createElement('th')
-      tr.appendChild(th1)
-      th1.innerHTML = 'DIST(m)'
-      const th2 = document.createElement('th')
-      tr.appendChild(th2)
-      th2.innerHTML = 'MAXIMUM 1-HR CONC(ug/m3)'
-      if (divisor) {
-        const th3 = document.createElement('th')
-        tr.appendChild(th3)
-        th3.innerHTML = 'RATE(%)'
-      }
-      // 动态添加隐藏表格内容
-      for (let i = 0; i < oddArr.length; i++) {
-        const tr = document.createElement('tr')
-        showTable.appendChild(tr)
-        const td1 = document.createElement('td')
-        tr.appendChild(td1)
-        td1.innerHTML = oddArr[i]
-        const td2 = document.createElement('td')
-        tr.appendChild(td2)
-        td2.innerHTML = evenArr[i]
-        if (divisor) {
-          const td3 = document.createElement('td')
-          tr.appendChild(td3)
-          td3.innerHTML = Math.round(evenArr[i] / divisor * 10000000000000) / 10000000000000
-        }
-      }
-    } else if (status === 3) {
-      // 将1和4数据连接，2和5数据连接，3和6数据连接
-      const oneArr = []
-      const twoArr = []
-      const threeArr = []
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i].cells[0]) oneArr.push(rows[i].cells[0].innerHTML)
-        if (rows[i].cells[1]) twoArr.push(rows[i].cells[1].innerHTML)
-        if (rows[i].cells[2]) threeArr.push(rows[i].cells[2].innerHTML)
-      }
-      for (let i = 0; i < rows.length; i++) {
-        if (rows[i].cells[3]) oneArr.push(rows[i].cells[3].innerHTML)
-        if (rows[i].cells[4]) twoArr.push(rows[i].cells[4].innerHTML)
-        if (rows[i].cells[5]) threeArr.push(rows[i].cells[5].innerHTML)
-      }
-      // 添加显示表格
-      const showTable = document.getElementById('show_table')
-      showTable.innerHTML = ''
-      // 获取除数
-      const divisor = document.getElementById('my_input').value
-      // 获取是否显示高程
-      const highArr = document.getElementsByName('high')
-      const highFlag = highArr[0].checked ? true : false
-      //添加表头
-      const tr = document.createElement('tr')
-      showTable.appendChild(tr)
-      const th1 = document.createElement('th')
-      tr.appendChild(th1)
-      th1.innerHTML = 'DIST(m)'
-      const th2 = document.createElement('th')
-      tr.appendChild(th2)
-      th2.innerHTML = 'MAXIMUM 1-HR CONC(ug/m3)'
-      if (highFlag) {
-        const th3 = document.createElement('th')
-        tr.appendChild(th3)
-        th3.innerHTML = 'RECEPTOR HEIGHT(m)'
-      }
-      if (divisor) {
-        const th4 = document.createElement('th')
-        tr.appendChild(th4)
-        th4.innerHTML = 'RATE(%)'
-      }
-      // 动态添加隐藏表格内容
-      for (let i = 0; i < oneArr.length; i++) {
-        const tr = document.createElement('tr')
-        showTable.appendChild(tr)
-        const td1 = document.createElement('td')
-        tr.appendChild(td1)
-        td1.innerHTML = oneArr[i]
-        const td2 = document.createElement('td')
-        tr.appendChild(td2)
-        td2.innerHTML = twoArr[i]
-        if (highFlag) {
-          const td3 = document.createElement('td')
-          tr.appendChild(td3)
-          td3.innerHTML = threeArr[i]
-        }
-        if (divisor) {
-          const td4 = document.createElement('td')
-          tr.appendChild(td4)
-          td4.innerHTML = Math.round(twoArr[i] / divisor * 10000000000000) / 10000000000000
-        }
-      }
-    }
-
+    dataObj.conversion(rows)
+    const { firstArr, secondArr, thirdArr } = dataObj
+    // 创建显示表格
+    const showTable = new Table('show_table', null, column, divisor, highFlag)
+    showTable.addTh()
+    showTable.specificCreate(firstArr, secondArr, thirdArr)
+    // 数据过滤
     dataFilter()
   }
 
@@ -245,110 +355,54 @@
    * 筛选数据的方法
    */
   function dataFilter() {
-    const usefulData = [0, 50, 75, 150, 200, 325, 450, 500, 650, 750, 1000, 1200, 1500, 2000, 3000, 4000, 5000]
-    // 获取结果的表格
-    const showTable = document.getElementById('show_table')
-    const filterTable = document.getElementById('filter_table')
-    filterTable.innerHTML = ''
-    const showTableRows = showTable.rows
-    for (let index = 0; index < showTableRows.length; index++) {
-      const rows = showTableRows[index]
-      const cells = rows.cells
-      for (let i = 0; i < usefulData.length; i++) {
-        const num = usefulData[i]
-        if (index === 0 || num == cells[0].innerHTML) {
-          const node = rows.cloneNode(true)
-          filterTable.appendChild(node)
-          break
-        }
-      }
-    }
+    const { language, column, divisor, highFlag } = getParams()
+    // 创建过滤表格
+    const filterTable = new Table('filter_table', null, column, divisor, highFlag)
+    const dataTable = document.getElementById('show_table')
+    filterTable.filter(dataTable)
     // 显示最大值和筛选表头
     document.getElementById('export_result').style.display = "block"
     document.getElementById('filter_h3').style.display = "block"
-    
   }
 
   /**
    * 读取文件的方法
    */
   function readFile() {
-    const objFile = document.getElementById('file_select')
-    if(objFile.value === '') {
-      alert('请选择文件！')
-      return
-    }
+    const { language, column } = getParams()
     // 获取文件
-    const files = objFile.files
-    // 新建一个FileReader
-    const reader = new FileReader()
-    // 判断文件是中文还是英文
-    const languageArr = document.getElementsByName('language')
-    const language = languageArr[0].checked ? 'chinese' : 'english'
-    const languageFlag = language === 'chinese' ? true : false
-    // 读取文件
-    if (languageFlag) {
-      console.log('中文')
-      reader.readAsText(files[0], 'GB2312')
-    } else {
-      console.log('英文')
-      reader.readAsText(files[0], 'UTF-8')
-    }
-    // 读取完文件之后会回来这里
-    reader.onload = function(e){
-      // 读取文件内容
-      const fileString = e.target.result
-      // 获取 MAXIMUM 1-HOUR 的值
-      const a = fileString.indexOf('----------  ----------  ----------  ----------  ----------')
-      const b = languageFlag ? fileString.indexOf('最大浓度点离源的距离') : fileString.indexOf('DISTANCE FROM SOURCE')
-      const MAXIMUM = fileString.slice(a, b).replace(/-/g, '').split(/[\s]/).filter(item => { return item !== '' })
-      // 找到数据的位置
-      const statusArr = document.getElementsByName('column')
-      const begin = statusArr[0].checked ? fileString.indexOf('---------------------               ---------------------') 
-      : fileString.indexOf('----------------------------          -----------------------------')
-      const end = languageFlag ? fileString.indexOf('AERSCREEN 最大浓度计算结果 小 结') : fileString.indexOf('AERSCREEN MAXIMUM IMPACT SUMMARY')
-      if (end === -1) {
-        alert('请确认文件语言是否正确！')
-        return
-      }
+    const file = new File('file_select', 'file_text', language, column)
+    if (file.name === '') return alert('请选择文件！')
+    file.read()
+    setTimeout(() => {
+      const MAXIMUM = file.MAXIMUM
+      const effectiveStr = file.effectiveStr
+      if (effectiveStr === '') return
       // 填充 MAXIMUM 1-HOUR 的值
-      const span1 = document.getElementById('export_span')
-      const span2 = document.getElementById('export_span_process')
+      const spanOne = document.getElementById('export_span')
+      const spanTwo = document.getElementById('export_span_process')
       const divisor = document.getElementById('my_input').value || 1
-      console.log(divisor, 'divisor')
-      span1.innerHTML = languageFlag ? MAXIMUM[1] : MAXIMUM[2]
-      span2.innerHTML = languageFlag ? (Math.round(MAXIMUM[1] / divisor * 10000000000000) / 10000000000000) : (Math.round(MAXIMUM[2] / divisor * 10000000000000) / 10000000000000)
-      // 获取数据
-      const effectiveStr = fileString.slice(begin, end).replace(/-0/g, '&').replace(/\*/g, '').replace(/-/g, '').replace(/&/g, '-0')
-      // 将数据添加到textarea中并转换
+      const magicNum = 10000000000000
+      spanOne.innerHTML = language === 'chinese' ? MAXIMUM[1] : MAXIMUM[2]
+      spanTwo.innerHTML = language === 'chinese' ? (Math.round(MAXIMUM[1] / divisor * magicNum) / magicNum) :
+        (Math.round(MAXIMUM[2] / divisor * magicNum) / magicNum)
       document.getElementById('my_textarea').value = effectiveStr
       changeData()
-    }
+    }, 100)
   }
 
   /**
    * 复制表格的方法
    */
-   function copyTable(tableName) {
-    console.log(tableName, 'tableName')
-    const table = document.getElementById(tableName)
-    const range = document.createRange()
-    // 设定range包含的节点对象 
-    range.selectNode(table)
-    // 窗口的selection对象，表示用户选择的文本
-    const selection = window.getSelection()
-    // 将已经包含的已选择的对象清除掉
-    if (selection.rangeCount > 0) selection.removeAllRanges()
-    // 将要复制的区域的range对象添加到selection对象中
-    selection.addRange(range)
-    // 执行copy命令，copy用户选择的文本
-    document.execCommand('copy')
+  function copyTable(tableID) {
+    const table = new Table(tableID)
+    table.copy()
   }
 
   /**
    * 清空数据的方法
    */
-  function clearData () {
+  function clearData() {
     window.location.reload(true)
   }
 </script>
