@@ -7,122 +7,25 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>OUT数据处理</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      height: 100%;
-      width: 100%;
-      background: #fff;
-      font-size: 14px;
-      font-family: 'Microsoft Yahei';
-      background-color: #f1f4f7;
-    }
-
-    input,
-    button,
-    label {
-      outline: none;
-      position: relative;
-    }
-
-    .container {
-      width: 1366px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    .my-input {
-      height: 27px;
-      width: 50px;
-      margin-right: 10px;
-    }
-
-    .my-button {
-      margin-right: 5px;
-      padding: 5px 10px;
-      background: #00b0f0;
-      color: #FFF;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    .my-button:hover {
-      opacity: 0.9;
-    }
-
-    #file_select {
-      position: absolute;
-      left: 0;
-      top: 0;
-      opacity: 0;
-      font-size: 20px;
-    }
-
-    #file_text {
-      color: red;
-    }
-
-    .file-type,
-    .file-handle,
-    .max-data {
-      display: flex;
-      align-items: center;
-      margin-top: 10px;
-    }
-
-    h4 {
-      margin: 0 5px;
-    }
-
-    .type-label {
-      margin-right: 10px;
-    }
-
-    input[type="radio"] {
-      margin-right: 3px;
-    }
-
-    .container_export {
-      display: flex;
-      margin-top: 20px;
-    }
-
-    .container_export_result,
-    .container_export_preview {
-      flex: 1;
-      background-color: #f3f4f5;
-    }
-
-    h3 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    textarea {
-      height: 500px;
-      width: 100%;
-      resize: none;
-      outline: none;
-      padding: 10px;
-    }
-
-    table {
-      text-align: center;
-      border-collapse: collapse;
-      min-width: 650px;
-      background-color: #fff;
-      margin-top: 10px;
-    }
-
-    .hidden_box {
-      display: none
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html,body { height: 100%; width: 100%; background: #fff; font-size: 14px; font-family: 'Microsoft Yahei'; background-color: #f1f4f7; }
+    input, button, label { outline: none; position: relative; }
+    .container { width: 1366px; margin: 0 auto; padding: 20px; }
+    .my-input { height: 27px; width: 50px; margin-right: 10px; }
+    .my-button { margin-right: 5px; padding: 5px 10px; background: #00b0f0; color: #FFF; border: none; border-radius: 5px; cursor: pointer; }
+    .my-button:hover { opacity: 0.9; }
+    #file_select { position: absolute; left: 0; top: 0; opacity: 0; font-size: 20px; }
+    #file_text{ color: red; }
+    .file-type, .file-handle, .max-data { display: flex; align-items: center; margin-top: 10px; }
+    h4 { margin: 0 5px; }
+    .type-label { margin-right: 10px; }
+    input[type="radio"] { margin-right: 3px; }
+    .container_export { display: flex; margin-top: 20px; }
+    .container_export_result, .container_export_preview { flex: 1; background-color: #f3f4f5; }
+    h3 { text-align: center; margin-bottom: 20px; }
+    textarea { height: 500px; width: 100%; resize: none; outline: none; padding: 10px; }
+    table { text-align: center; border-collapse: collapse; min-width: 650px; background-color: #fff; margin-top: 10px; }
+    .hidden_box { display: none }
   </style>
 </head>
 
@@ -298,11 +201,7 @@
           if (rows[i].cells[5]) thirdArr.push(rows[i].cells[5].innerHTML)
         }
       }
-      Object.assign(this, {
-        firstArr,
-        secondArr,
-        thirdArr
-      })
+      Object.assign(this, { firstArr, secondArr, thirdArr })
     }
   }
 
@@ -420,12 +319,7 @@
     // 获取是否显示高程
     const highArr = document.getElementsByName('high')
     const highFlag = highArr[0].checked ? true : false
-    return {
-      language,
-      column,
-      divisor,
-      highFlag
-    }
+    return { language, column, divisor, highFlag }
   }
 
   /**
@@ -440,12 +334,7 @@
    * 转换数据的方法
    */
   function changeData() {
-    const {
-      language,
-      column,
-      divisor,
-      highFlag
-    } = getParams()
+    const { language, column, divisor, highFlag } = getParams()
     // 创建数据对象和表格对象
     const dataObj = new Data('my_textarea', language, column, divisor)
     const hiddenTable = new Table('hidden_table', dataObj.data, column, divisor, highFlag)
@@ -453,11 +342,7 @@
     // 转换数据
     const rows = hiddenTable.rows
     dataObj.conversion(rows)
-    const {
-      firstArr,
-      secondArr,
-      thirdArr
-    } = dataObj
+    const { firstArr, secondArr, thirdArr } = dataObj
     // 创建显示表格
     const showTable = new Table('show_table', null, column, divisor, highFlag)
     showTable.addTh()
@@ -470,12 +355,7 @@
    * 筛选数据的方法
    */
   function dataFilter() {
-    const {
-      language,
-      column,
-      divisor,
-      highFlag
-    } = getParams()
+    const { language, column, divisor, highFlag } = getParams()
     // 创建过滤表格
     const filterTable = new Table('filter_table', null, column, divisor, highFlag)
     const dataTable = document.getElementById('show_table')
@@ -489,10 +369,7 @@
    * 读取文件的方法
    */
   function readFile() {
-    const {
-      language,
-      column
-    } = getParams()
+    const { language, column } = getParams()
     // 获取文件
     const file = new File('file_select', 'file_text', language, column)
     if (file.name === '') return alert('请选择文件！')
