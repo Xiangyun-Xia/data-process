@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>报表数据处理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; width: 100%; background: #fff; font-size: 14px; font-family: 'Microsoft Yahei'; background-color: #f1f4f7; }
+    input, button, label { outline: none; position: relative; }
+    .container { width: 1366px; margin: 0 auto; padding: 20px; }
+    .my-input { height: 27px; width: 50px; margin-right: 10px; }
+    .my-button { margin-right: 5px; padding: 5px 10px; background: #00b0f0; color: #FFF; border: none; border-radius: 5px; cursor: pointer; }
+    .my-button:hover { opacity: 0.9; }
+    #file_select { position: absolute; left: 0; top: 0; opacity: 0; font-size: 20px; }
+    #file_text { color: red; }
+    .file-type, .file-handle, .max-data { display: flex; align-items: center; margin-top: 10px; }
+    h4 { margin: 0 5px; }
+    .type-label { margin-right: 10px; }
+    input[type="radio"] { margin-right: 3px; }
+    .container_export { margin-top: 20px; }
+    .container_export_result, .container_export_preview { background-color: #f3f4f5; }
+    h3 { text-align: center; margin-bottom: 20px; }
+    textarea { height: 300px; width: 100%; resize: none; outline: none; }
+    table { text-align: center; border-collapse: collapse; width: 100%; background-color: #fff; margin-top: 10px; }
+    .hidden_box { display: none }
+    td { max-width: 200px; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- 输入区 -->
+    <div class="container_input">
+      <label for="file_select" class="file-select">
+        <input class="my-button" type="button" value="选择文件">
+        <span id="file_text">未选择任何文件</span>
+        <input type="file" id="file_select" onchange="fileChange()">
+      </label>
+
+      <div class="file-handle">
+        <button class="my-button" onclick="readFile()">读取文件</button>
+        <button class="my-button" onclick="copyTable('show_table')">复制结果表格</button>
+        <button class="my-button" onclick="clearData()">清空内容</button>
+      </div>
+    </div>
+    <!-- 输出区 -->
+    <div class="container_export">
+      <div class="container_export_preview">
+        <h3>====== 原数据预览 ======</h3>
+        <textarea name="" id="my_textarea" cols="30" rows="10" readonly></textarea>
+      </div>
+      <div class="container_export_result" id="export_result" style="display: none">
+        <h3 id="result_h3">====== 结果输出 ======</h3>
+        <table id="hidden_table" class="hidden_box" border="1"></table>
+        <table id="show_table" border="1"></table>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
+
+<script>
+  const commonStart = '最大	最小'
+  const commonEnd = '上合'
+  const temperatureTitle = '--------------------------------------------------------气温统计结果---------------------------------------------------'
+  const temperature10Title = '--------------------------------------------------------10m温度统计结果------------------------------------------------'
+  const temperature30Title = '--------------------------------------------------------30m温度统计结果------------------------------------------------'
+  const temperature70Title = '--------------------------------------------------------70m温度统计结果------------------------------------------------'
+  const temperature100Title = '--------------------------------------------------------100m温度统计结果-----------------------------------------------'
+  const pressureTitle = '--------------------------------------------------------本站气压-------------------------------------------------------'
+  const humidityTitle = '--------------------------------------------------------地面湿度-------------------------------------------------------'
+  const humidity100Title = '--------------------------------------------------------100m湿度-------------------------------------------------------'
+  const rainfallTitle = '--------------------------------------------------------降水-----------------------------------------------------------'
+  const radiationTitle = '-------------------------------------------------------总辐射----------------------------------------------------------'
+  const directRadiationTitle = '-------------------------------------------------------直接辐射--------------------------------------------------------'
+  const netRadiationTitle = '-------------------------------------------------------净辐射----------------------------------------------------------'
+  const evaporationTitle = '-------------------------------------------------------蒸发------------------------------------------------------------'
+  const timingWind9Title = '-------------------------------------------------------9米定时风-------------------------------------------------------'
+  const timingWind10Title = '-------------------------------------------------------10米定时风------------------------------------------------------'
+  const timingWind30Title = '-------------------------------------------------------30米定时风------------------------------------------------------'
+  const timingWind70Title = '-------------------------------------------------------70米定时风------------------------------------------------------'
+  const timingWind100Title = '-------------------------------------------------------100米定时风-----------------------------------------------------'
+  const selfWind9Title = '-------------------------------------------------------9米自记风-------------------------------------------------------'
+  const selfWind10Title = '-------------------------------------------------------10米自记风------------------------------------------------------'
+  const selfWind30Title = '-------------------------------------------------------30自记风--------------------------------------------------------'
+  const selfWind70Title = '-------------------------------------------------------70米自记风------------------------------------------------------'
+  const selfWind100Title = '-------------------------------------------------------100米自记风-----------------------------------------------------'
+  // 文件类
+  class File {
+    constructor(fileID, nameID) {
+      this._fileNode = document.getElementById(fileID)
+      this._nameNode = document.getElementById(nameID)
+      this._fileStr = ''
+      this._dataStrObject = {}
+    }
+    get path() {
+      return this._fileNode.value
+    }
+    get name() {
+      const _name = this.path.split('\\')
+      return _name[_name.length - 1]
+    }
+    get fileStr() {
+      return this._fileStr
+    }
+    get dataStrObject() {
+      return this._dataStrObject
+    }
+    setName() {
+      this._nameNode.innerHTML = this.name
+    }
+    stringSlice(string, start, end) {
+      const str = string.slice(string.indexOf(start), string.indexOf(end))
+      return str.slice(str.indexOf(commonStart), str.indexOf(commonEnd)).replace(/最大	最小/g, '')
+    }
+    read() {
+      // 获取文件
+      const files = this._fileNode.files
+      // 新建一个FileReader
+      const readers = new FileReader()
+      // 设置读取语言
+      readers.readAsText(files[0], 'GB2312')
+      // 读取完文件之后会回来这里
+      readers.onload = (e) => {
+        // 读取文件内容
+        const fileString = e.target.result
+        this._fileStr = fileString
+        // 获取气温数据
+        const temperatureStr = this.stringSlice(fileString, temperatureTitle, temperature10Title)
+        const temperature10Str = this.stringSlice(fileString, temperature10Title, temperature30Title)
+        const temperature30Str = this.stringSlice(fileString, temperature30Title, temperature70Title)
+        const temperature70Str = this.stringSlice(fileString, temperature70Title, temperature100Title)
+        const temperature100Str = this.stringSlice(fileString, temperature100Title, pressureTitle)
+        // 获取气压数据
+        const pressureStr = this.stringSlice(fileString, pressureTitle, humidityTitle)
+        // 获取湿度数据
+        const humidityStr = this.stringSlice(fileString, humidityTitle, humidity100Title)
+        const humidity100Str = this.stringSlice(fileString, humidity100Title, rainfallTitle)
+        // 获取降水数据
+        const rainfallStr = this.stringSlice(fileString, rainfallTitle, radiationTitle)
+        // 获取辐射数据
+        const radiationStr = this.stringSlice(fileString, radiationTitle, directRadiationTitle)
+        const directRadiationStr = this.stringSlice(fileString, directRadiationTitle, netRadiationTitle)
+        const netRadiationStr = this.stringSlice(fileString, netRadiationTitle, evaporationTitle)
+        // 获取蒸发数据
+        const evaporationStr = this.stringSlice(fileString, evaporationTitle, timingWind9Title)
+        // 获取定时风数据
+        const timingWind9Str = this.stringSlice(fileString, timingWind9Title, timingWind10Title)
+        const timingWind10Str = this.stringSlice(fileString, timingWind10Title, timingWind30Title)
+        const timingWind30Str = this.stringSlice(fileString, timingWind30Title, timingWind70Title)
+        const timingWind70Str = this.stringSlice(fileString, timingWind70Title, timingWind100Title)
+        const timingWind100Str = this.stringSlice(fileString, timingWind100Title, selfWind9Title)
+        // 获取自记风数据
+        const selfWind9Str = this.stringSlice(fileString, selfWind9Title, selfWind10Title)
+        const selfWind10Str = this.stringSlice(fileString, selfWind10Title, selfWind30Title)
+        const selfWind30Str = this.stringSlice(fileString, selfWind30Title, selfWind70Title)
+        const selfWind70Str = this.stringSlice(fileString, selfWind70Title, selfWind100Title)
+        const selfWind100Str = this.stringSlice(fileString, selfWind100Title)
+        Object.assign(this._dataStrObject, {
+          temperatureStr,
+          temperature10Str,
+          temperature30Str,
+          temperature70Str,
+          temperature100Str,
+          pressureStr,
+          humidityStr,
+          humidity100Str,
+          rainfallStr,
+          radiationStr,
+          directRadiationStr,
+          netRadiationStr,
+          evaporationStr,
+          timingWind9Str,
+          timingWind10Str,
+          timingWind30Str,
+          timingWind70Str,
+          timingWind100Str,
+          selfWind9Str,
+          selfWind10Str,
+          selfWind30Str,
+          selfWind70Str,
+          selfWind100Str
+        })
+      }
+    }
+  }
+
+  // 数据类
+  class Data {
+    constructor() {}
+    getData(dataStr) {
+      // 按行切割成数组
+      const dataRow = dataStr.split(/[\n]/)
+      // 处理每一行的数据，按列切割成数组
+      const dataCols = dataRow.map(row => {
+        return row.split(/[\s]/).filter(cols => {
+          return cols !== ''
+        })
+      })
+      return dataCols.filter(item => item.length > 0)
+    }
+    findMax(data, max, min, divisor) {
+      let maxNum = 0
+      const maxCoordinate = { day: 1, time: 1 }
+      data.map((item, index) => {
+        item.map((num, int) => {
+          if ((num / divisor > maxNum) && (num != 99999) && (int < 25) && (int > 0) && (num / divisor < max) && (num / divisor > min)) {
+            maxNum = num / divisor
+            const time = int > 4 ? (int - 4) : (int + 20)
+            Object.assign(maxCoordinate, { day: index + 1, time })
+          }
+        })
+      })
+      return {
+        maxNum: maxNum == 0 ? '0' : maxNum,
+        maxCoordinate
+      }
+    }
+    findMin(data, max, min, divisor) {
+      let minNum = 99999
+      const minCoordinate = { day: 1, time: 1 }
+      data.map((item, index) => {
+        item.map((num, int) => {
+          if ((num / divisor < minNum) && (num != 99999) && (int < 25) && (int > 0) && (num / divisor < max) && (num / divisor > min)) {
+            minNum = num / divisor
+            const time = int > 4 ? (int - 4) : (int + 20)
+            Object.assign(minCoordinate, { day: index + 1, time })
+          }
+        })
+      })
+      return {
+        minNum: minNum == 99999 ? '0' : minNum,
+        minCoordinate
+      }
+    }
+    findAvg(data, max, min, divisor) {
+      let all = 0
+      let dayNum = 0
+      data.map((item, index) => {
+        item.map((num, int) => {
+          if ((num != 99999) && (int < 25) && (int > 0) && (num / divisor < max) && (num / divisor > min)) {
+            all += +num
+            dayNum++
+          }
+        })
+      })
+      if (dayNum === 0) return '0'
+      return (all / dayNum / divisor).toFixed(1)
+    }
+    findLack(data) {
+      let lackNum = 0
+      let day = 0
+      const lackArr = []
+      data.map((item, index) => {
+        day++
+        item.map((num, int) => {
+          if ((+num == 99999) && (int < 25) && (int > 0)) {
+            lackNum++
+            const time = int > 4 ? (int - 4) : (int + 20)
+            lackArr.push({ day: index + 1, time })
+          }
+        })
+      })
+      return {
+        lackNum: lackNum == 0 ? '0' : lackNum,
+        lackArr,
+        day
+      }
+    }
+    findUnuse(data, max, min, divisor) {
+      let unuseNum = 0
+      const unuseArr = []
+      data.map((item, index) => {
+        item.map((num, int) => {
+          if ((num != 99999) && (int < 25) && (int > 0) && ((num / divisor > max) || (num / divisor < min))) {
+            unuseNum++
+            const time = int > 4 ? (int - 4) : (int + 20)
+            unuseArr.push({ day: index + 1, time })
+          }
+        })
+      })
+      return {
+        unuseNum: unuseNum == 0 ? '0' : unuseNum,
+        unuseArr
+      }
+    }
+    getJoinData(data) {
+      let length = 0
+      let day = 1
+      const result = []
+      data.map((item, index) => {
+        if (index === 0 || item.day != day) {
+          day = item.day
+          length++
+          result.push({ day, time: [item.time] })
+        } else {
+          result[length - 1].time.push(item.time)
+        }
+      })
+      const resultArr = result.map(item => {
+        return `${item.day}日：${item.time.join(' ')}时`
+      })
+      return resultArr.join('、')
+    }
+    getDataArr(data, max, min, divisor = 1) {
+      const maxResult = this.findMax(data, max, min, divisor)
+      const minResult = this.findMin(data, max, min, divisor)
+      const avg = this.findAvg(data, max, min, divisor)
+      const lack = this.findLack(data)
+      const unuse = this.findUnuse(data, max, min, divisor)
+      const allNum = lack.day * 24
+      const percentage = ((allNum - lack.lackNum - unuse.unuseNum) / allNum * 100).toFixed(1)
+      return [`${percentage}%`, `${this.getJoinData(lack.lackArr)}`, `${this.getJoinData(unuse.unuseArr)}`,
+        `(${min}, ${max})`, avg, maxResult.maxNum, `${maxResult.maxCoordinate.day}日${maxResult.maxCoordinate.time}时`,
+        minResult.minNum, `${minResult.minCoordinate.day}日${minResult.minCoordinate.time}时`
+      ]
+    }
+  }
+
+  // 表格类
+  class Table {
+    constructor(tableID, tableData) {
+      this._tableNode = document.getElementById(tableID)
+      this._tableData = tableData
+    }
+    get rows() {
+      return this._tableNode.rows
+    }
+    append(name, parent, value) {
+      const node = document.createElement(name)
+      parent.appendChild(node)
+      if (value) node.innerHTML = value
+      return node
+    }
+    create() {
+      this._tableNode.innerHTML = ''
+      this.addTh()
+      this._tableData.map((item) => {
+        const tr = this.append('tr', this._tableNode)
+        item.map((tdValue) => {
+          this.append('td', tr, tdValue)
+        })
+      })
+    }
+    addTh() {
+      const tr = this.append('tr', this._tableNode)
+      this.append('th', tr, '-')
+      this.append('th', tr, '当月有效完整率')
+      this.append('th', tr, '缺测时段')
+      this.append('th', tr, '故障时段')
+      this.append('th', tr, '质控范围')
+      this.append('th', tr, '平均值')
+      this.append('th', tr, '最大值')
+      this.append('th', tr, '最大值出现时间')
+      this.append('th', tr, '最小值')
+      this.append('th', tr, '最小值出现时间')
+    }
+    copy() {
+      const range = document.createRange()
+      // 设定range包含的节点对象
+      range.selectNode(this._tableNode)
+      // 窗口的selection对象，表示用户选择的文本
+      const selection = window.getSelection()
+      // 将已经包含的已选择的对象清除掉
+      if (selection.rangeCount > 0) selection.removeAllRanges()
+      // 将要复制的区域的range对象添加到selection对象中
+      selection.addRange(range)
+      // 执行copy命令，copy用户选择的文本
+      document.execCommand('copy')
+    }
+  }
+
+  /**
+   * 监听选择文件的改变
+   */
+  function fileChange() {
+    const file = new File('file_select', 'file_text')
+    file.setName()
+  }
+
+  /**
+   * 读取文件的方法
+   */
+  function readFile() {
+    // 获取文件
+    const file = new File('file_select', 'file_text')
+    if (file.name === '') return alert('请选择文件！')
+    file.read()
+    setTimeout(() => {
+      const fileObj = file.dataStrObject
+      const tableData = []
+      // 获取各个数据
+      const myData = new Data()
+      // 气温
+      const temperatureData = myData.getData(fileObj.temperatureStr)
+      const temperatureArr = myData.getDataArr(temperatureData, 80, -5, 10)
+      temperatureArr.unshift('气温-本站')
+      tableData.push(temperatureArr)
+      // 10米气温
+      const temperature10Data = myData.getData(fileObj.temperature10Str)
+      const temperature10Arr = myData.getDataArr(temperature10Data, 80, -5, 10)
+      temperature10Arr.unshift('气温-10米')
+      tableData.push(temperature10Arr)
+      // 30米气温
+      const temperature30Data = myData.getData(fileObj.temperature30Str)
+      const temperature30Arr = myData.getDataArr(temperature30Data, 80, -5, 10)
+      temperature30Arr.unshift('气温-30米')
+      tableData.push(temperature30Arr)
+      // 70米气温
+      const temperature70Data = myData.getData(fileObj.temperature70Str)
+      const temperature70Arr = myData.getDataArr(temperature70Data, 80, -5, 10)
+      temperature70Arr.unshift('气温-70米')
+      tableData.push(temperature70Arr)
+      // 100米气温
+      const temperature100Data = myData.getData(fileObj.temperature100Str)
+      const temperature100Arr = myData.getDataArr(temperature100Data, 80, -5, 10)
+      temperature100Arr.unshift('气温-100米')
+      tableData.push(temperature100Arr)
+      // 气压
+      const pressureData = myData.getData(fileObj.pressureStr)
+      const pressureArr = myData.getDataArr(pressureData, 1100, 500, 10)
+      pressureArr.unshift('本站气压')
+      tableData.push(pressureArr)
+      // 本站湿度
+      const humidityData = myData.getData(fileObj.humidityStr)
+      const humidityArr = myData.getDataArr(humidityData, 100, 0, 1)
+      humidityArr.unshift('湿度-本站')
+      tableData.push(humidityArr)
+      // 100米湿度
+      const humidity100Data = myData.getData(fileObj.humidity100Str)
+      const humidity100Arr = myData.getDataArr(humidity100Data, 100, 0, 1)
+      humidity100Arr.unshift('湿度-100米')
+      tableData.push(humidity100Arr)
+      // 降水
+      const rainfallData = myData.getData(fileObj.rainfallStr)
+      const rainfallArr = myData.getDataArr(rainfallData, 240, 0, 10)
+      rainfallArr.unshift('降水')
+      tableData.push(rainfallArr)
+      // 总辐射
+      const radiationData = myData.getData(fileObj.radiationStr)
+      const radiationArr = myData.getDataArr(radiationData, 2000, 0, 1)
+      radiationArr.unshift('总辐射')
+      tableData.push(radiationArr)
+      // 直接辐射
+      const directRadiationData = myData.getData(fileObj.directRadiationStr)
+      const directRadiationArr = myData.getDataArr(directRadiationData, 1400, 0, 1)
+      directRadiationArr.unshift('直接辐射')
+      tableData.push(directRadiationArr)
+      // 净辐射
+      const netRadiationData = myData.getData(fileObj.netRadiationStr)
+      const netRadiationArr = myData.getDataArr(netRadiationData, 1400, -200, 1)
+      netRadiationArr.unshift('净辐射')
+      tableData.push(netRadiationArr)
+      // 蒸发
+      const evaporationData = myData.getData(fileObj.evaporationStr)
+      const evaporationArr = myData.getDataArr(evaporationData, 100, 0, 1)
+      evaporationArr.unshift('蒸发')
+      tableData.push(evaporationArr)
+      // 9米定时风
+      const timingWind9Data = myData.getData(fileObj.timingWind9Str)
+      const timingWind9UseData = timingWind9Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const timingWind9Arr = myData.getDataArr(timingWind9UseData, 60, 0.3, 10)
+      timingWind9Arr.unshift('定时风-9米')
+      tableData.push(timingWind9Arr)
+      // 10米定时风
+      const timingWind10Data = myData.getData(fileObj.timingWind10Str)
+      const timingWind10UseData = timingWind10Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const timingWind10Arr = myData.getDataArr(timingWind10UseData, 60, 0.3, 10)
+      timingWind10Arr.unshift('定时风-10米')
+      tableData.push(timingWind10Arr)
+      // 30米定时风
+      const timingWind30Data = myData.getData(fileObj.timingWind30Str)
+      const timingWind30UseData = timingWind30Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const timingWind30Arr = myData.getDataArr(timingWind30UseData, 60, 0.3, 10)
+      timingWind30Arr.unshift('定时风-30米')
+      tableData.push(timingWind30Arr)
+      // 70米定时风
+      const timingWind70Data = myData.getData(fileObj.timingWind70Str)
+      const timingWind70UseData = timingWind70Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const timingWind70Arr = myData.getDataArr(timingWind70UseData, 60, 0.3, 10)
+      timingWind70Arr.unshift('定时风-70米')
+      tableData.push(timingWind70Arr)
+      // 100米定时风
+      const timingWind100Data = myData.getData(fileObj.timingWind100Str)
+      const timingWind100UseData = timingWind100Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const timingWind100Arr = myData.getDataArr(timingWind100UseData, 60, 0.3, 10)
+      timingWind100Arr.unshift('定时风-100米')
+      tableData.push(timingWind100Arr)
+      // 9米自记风
+      const selfWind9Data = myData.getData(fileObj.selfWind9Str)
+      const selfWind9UseData = selfWind9Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const selfWind9Arr = myData.getDataArr(selfWind9UseData, 60, 0.3, 10)
+      selfWind9Arr.unshift('自记风-9米')
+      tableData.push(selfWind9Arr)
+      // 10米自记风
+      const selfWind10Data = myData.getData(fileObj.selfWind10Str)
+      const selfWind10UseData = selfWind10Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const selfWind10Arr = myData.getDataArr(selfWind10UseData, 60, 0.3, 10)
+      selfWind10Arr.unshift('自记风-10米')
+      tableData.push(selfWind10Arr)
+      // 30米自记风
+      const selfWind30Data = myData.getData(fileObj.selfWind30Str)
+      const selfWind30UseData = selfWind30Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const selfWind30Arr = myData.getDataArr(selfWind30UseData, 60, 0.3, 10)
+      selfWind30Arr.unshift('自记风-30米')
+      tableData.push(selfWind30Arr)
+      // 70米自记风
+      const selfWind70Data = myData.getData(fileObj.selfWind70Str)
+      const selfWind70UseData = selfWind70Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const selfWind70Arr = myData.getDataArr(selfWind70UseData, 60, 0.3, 10)
+      selfWind70Arr.unshift('自记风-70米')
+      tableData.push(selfWind70Arr)
+      // 100米自记风
+      const selfWind100Data = myData.getData(fileObj.selfWind100Str)
+      const selfWind100UseData = selfWind100Data.map((item, index) => {
+        if (index % 2 === 0) return item
+      }).filter(item => item !== void 0)
+      const selfWind100Arr = myData.getDataArr(selfWind100UseData, 60, 0.3, 10)
+      selfWind100Arr.unshift('自记风-100米')
+      tableData.push(selfWind100Arr)
+
+      document.getElementById('my_textarea').value = file.fileStr
+      createTable(tableData)
+    }, 500)
+  }
+
+
+  /**
+   * 创建表格的方法
+   */
+  function createTable(tableData) {
+    const showTable = new Table('show_table', tableData)
+    showTable.create()
+    document.getElementById('export_result').style.display = 'block'
+  }
+
+  /**
+   * 复制表格的方法
+   */
+  function copyTable(tableID) {
+    const table = new Table(tableID)
+    table.copy()
+  }
+
+  /**
+   * 清空数据的方法
+   */
+  function clearData() {
+    window.location.reload(true)
+  }
+</script>

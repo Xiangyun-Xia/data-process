@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>数据读取</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html,body { height: 100%; width: 100%; background: #fff; font-size: 14px; font-family: 'Microsoft Yahei'; background-color: #f1f4f7; }
+    input, button, label { outline: none; position: relative; }
+    .container { width: 1366px; margin: 0 auto; padding: 20px; }
+    .my-input { height: 27px; width: 50px; margin-right: 10px; }
+    .my-button { margin-right: 5px; padding: 5px 10px; background: #00b0f0; color: #FFF; border: none; border-radius: 5px; cursor: pointer; }
+    .my-button:hover { opacity: 0.9; }
+    #file_select { position: absolute; left: 0; top: 0; opacity: 0; font-size: 20px; }
+    #file_text{ color: red; }
+    .file-type, .file-handle, .max-data { display: flex; align-items: center; margin-top: 10px; }
+    h4 { margin: 0 5px; }
+    .type-label { margin-right: 10px; }
+    input[type="radio"] { margin-right: 3px; }
+    .container_export { display: flex; margin-top: 20px; }
+    .container_export_result, .container_export_preview { flex: 1; background-color: #f3f4f5; }
+    h3 { text-align: center; margin-bottom: 20px; }
+    textarea { height: 500px; width: 100%; resize: none; outline: none; padding: 10px; }
+    table { text-align: center; border-collapse: collapse; min-width: 650px; background-color: #fff; margin-top: 10px; }
+    .hidden_box { display: none }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- 输入区 -->
+    <div class="container_input">
+      <label for="file_select" class="file-select">
+        <input class="my-button" type="button" value="选择文件">
+        <span id="file_text">未选择任何文件</span>
+        <input type="file" id="file_select" onchange="fileChange()">
+      </label>
+      <div class="file-type">
+        <h4>数据列数：</h4>
+        <label class="type-label"><input name="column" type="radio" value="3" />三列</label>
+        <label><input name="column" type="radio" value="5" checked="checked" />五列</label>
+      </div> 
+      <div class="file-handle">
+        <!-- <h4>除以</h4>
+        <input type="text" id="my_input" class="my-input"> -->
+        <button class="my-button" onclick="readFile()">读取文件</button>
+
+        <button style="margin-left: 60px" class="my-button" onclick="copyTable('show_table')">复制结果表格</button>
+        <button class="my-button" onclick="clearData()">清空内容</button>
+      </div>
+    </div>
+    <!-- 输出区 -->
+    <div class="container_export">
+      <div class="container_export_preview" style="padding-right: 20px">
+        <h3>====== 数据输入/原数据预览 ======</h3>
+        <textarea name="" id="my_textarea" cols="30" rows="10"></textarea>
+        <h3 id="filter_h3" style="margin-top:20px; display: none">====== 结果筛选 ======</h3>
+        <table id="filter_table" border="1"></table>
+      </div>
+      <div class="container_export_result" id="export_result" style="display: none">
+        <h3 id="result_h3">====== 结果输出 ======</h3>
+        <table id="hidden_table" class="hidden_box" border="1"></table>
+        <table id="show_table" border="1"></table>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
+
+<script>
+  // 文件类
+  class File {
+    constructor(fileID, nameID, column = 3) {
+      this._fileNode = document.getElementById(fileID)
+      this._nameNode = document.getElementById(nameID)
+      this._column = column
+      this._MAXIMUM = []
+      this._effectiveStr = ''
+    }
+    get path() {
+      return this._fileNode.value
+    }
+    get name() {
+      const _name = this.path.split('\\')
+      return _name[_name.length - 1]
+    }
+    get MAXIMUM() {
+      return this._MAXIMUM
+    }
+    get effectiveStr() {
+      return this._effectiveStr
+    }
+    setName() {
+      this._nameNode.innerHTML = this.name
+    }
+    read() {
+      // 获取文件
+      const files = this._fileNode.files
+      // 新建一个FileReader
+      const readers = new FileReader()
+      // 设置读取语言
+      readers.readAsText(files[0], 'UTF-8')
+      // 读取完文件之后会回来这里
+      readers.onload = (e) => {
+        // 读取文件内容
+        const fileString = e.target.result
+        // 找到数据的位置
+        const begin = this._column === 3 ? fileString.indexOf('RECEPTOR (x,y) km      VALUE') :
+          fileString.indexOf('RECEPTOR (x,y) km        1 RANK     NLAT_WGS84  ELON_WGS84')
+        if (begin === -1) {
+          return alert('请确认文件列数是否正确！')
+        }
+        // 获取所需数据的字符串
+        const effectiveStr = fileString.slice(begin).replace(/-0/g, '&').replace(/\*/g, '').replace(/RECEPTOR \(x,y\) km      VALUE/g, '').replace(/RECEPTOR \(x,y\) km        1 RANK     NLAT_WGS84  ELON_WGS84/g, '').replace(/&/g, '-0')
+        this._effectiveStr = effectiveStr
+      }
+    }
+  }
+
+  // 数据类
+  class Data {
+    constructor(nodeID, column = 3) {
+      this._dataNode = document.getElementById(nodeID)
+      this._column = column
+    }
+    get data() {
+      const dataStr = this._dataNode.value
+      // 按行切割成数组
+      const dataRow = dataStr.split(/[\n]/)
+      // 处理每一行的数据，按列切割成数组
+      const dataCols = dataRow.map(row => {
+        return row.split(/[\s]/).filter(cols => cols !== '')
+      })
+      return dataCols.filter(row => row.length !== 0)
+    }
+    get rows() {
+      return this._dataNode.rows
+    }
+  }
+
+  // 表格类
+  class Table {
+    constructor(tableID, tableData, column = 2) {
+      this._tableNode = document.getElementById(tableID)
+      this._tableData = tableData
+      this._column = column
+
+      this._magicNum = 10000000000000
+    }
+    get rows() {
+      return this._tableNode.rows
+    }
+    append(name, parent, value) {
+      const node = document.createElement(name)
+      parent.appendChild(node)
+      if (value) node.innerHTML = value
+      return node
+    }
+    create() {
+      this._tableNode.innerHTML = ''
+      this.addTh()
+      this._tableData.map((item) => {
+        const tr = this.append('tr', this._tableNode)
+        item.map((tdValue) => {
+          this.append('td', tr, tdValue)
+        })
+      })
+    }
+    addTh() {
+      const tr = this.append('tr', this._tableNode)
+      this.append('th', tr, 'RECEPTOR(x)')
+      this.append('th', tr, 'RECEPTOR(y)')
+      if (this._column === 3) {
+        this.append('th', tr, 'VALUE')
+      }
+      if (this._column === 5) {
+        this.append('th', tr, '1 RANK')
+        this.append('th', tr, 'NLAT_WGS84')
+        this.append('th', tr, 'ELON_WGS84')
+      }
+    }
+    copy() {
+      const range = document.createRange()
+      // 设定range包含的节点对象
+      range.selectNode(this._tableNode)
+      // 窗口的selection对象，表示用户选择的文本
+      const selection = window.getSelection()
+      // 将已经包含的已选择的对象清除掉
+      if (selection.rangeCount > 0) selection.removeAllRanges()
+      // 将要复制的区域的range对象添加到selection对象中
+      selection.addRange(range)
+      // 执行copy命令，copy用户选择的文本
+      document.execCommand('copy')
+    }
+  }
+
+  /**
+   * 获取参数
+   */
+  function getParams() {
+    // 获取列数
+    const columnArr = document.getElementsByName('column')
+    const column = columnArr[0].checked ? 3 : 5
+    return { column }
+  }
+
+  /**
+   * 监听选择文件的改变
+   */
+  function fileChange() {
+    const file = new File('file_select', 'file_text')
+    file.setName()
+  }
+
+  /**
+   * 转换数据的方法
+   */
+  function changeData() {
+    const { column } = getParams()
+    // 创建数据对象和表格对象
+    const dataObj = new Data('my_textarea', column)
+    // 创建显示表格
+    const showTable = new Table('show_table', dataObj.data, column)
+    showTable.create()
+    document.getElementById('export_result').style.display = 'block'
+  }
+
+  /**
+   * 读取文件的方法
+   */
+  function readFile() {
+    const { column } = getParams()
+    // 获取文件
+    const file = new File('file_select', 'file_text', column)
+    if (file.name === '') return alert('请选择文件！')
+    file.read()
+    setTimeout(() => {
+      const effectiveStr = file.effectiveStr
+      if (effectiveStr === '') return
+      document.getElementById('my_textarea').value = effectiveStr
+      changeData()
+    }, 100)
+  }
+
+  /**
+   * 复制表格的方法
+   */
+  function copyTable(tableID) {
+    const table = new Table(tableID)
+    table.copy()
+  }
+
+  /**
+   * 清空数据的方法
+   */
+  function clearData() {
+    window.location.reload(true)
+  }
+</script>
